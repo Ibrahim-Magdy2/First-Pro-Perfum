@@ -475,7 +475,7 @@ const translations = {
     noInfo: 'لا أملك معلومات كافية عن ذلك داخل المتجر.'
   },
   en: {
-    brandName: 'The Perfume House',
+    brandName: 'Perfume store name',
     navHome: 'Home',
     navCollection: 'Collection',
     navMen: 'Men',
