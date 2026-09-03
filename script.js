@@ -1052,40 +1052,177 @@ function openSearchPanel() {
   setTimeout(() => ui.searchInput.focus(), 120);
 }
 
-function renderSearchResults(query = '') {
-  const lower = query.trim().toLowerCase();
-  const matches = lower
-    ? productCatalog.filter((product) => {
-      const haystack = `${product.name} ${product.type} ${product.notes.join(' ')} ${product.tag}`.toLowerCase();
-      return haystack.includes(lower);
-    })
-    : productCatalog.slice(0, 3);
+function renderSearchResults(query = "") {
+  const container = document.getElementById("searchResults");
+  if (!container) return;
 
-  if (!matches.length) {
-    ui.searchResults.innerHTML = `<div class="search-empty">${translations[state.lang].noResults}</div>`;
+  const q = query.trim().toLowerCase();
+
+  if (!q) {
+    container.innerHTML = `
+      <div class="search-empty">
+        اكتب اسم عطر أو نوع أو مناسبة أو نوتة للبحث.
+      </div>
+    `;
     return;
   }
 
-  ui.searchResults.innerHTML = matches.map((product) => {
-    const sizes = getProductSizes(product).map((size) => `${size.ml}ml ${formatPrice(size.price)}`).join(' • ');
-    const notes = product.notes && product.notes.length ? product.notes.join(' • ') : product.tag;
-    return `
-      <div class="search-result">
-        <img src="${product.image}" alt="${product.name}" />
-        <div class="search-result-copy">
-          <strong>${product.name}</strong>
-          <small>${product.type} • ${product.occasion} • ${product.mood}</small>
-          <small>${notes}</small>
-          <small>${sizes}</small>
-          <span class="search-result-price">${formatPrice(getProductSizes(product)[0]?.price || product.price)}</span>
-        </div>
-        <button class="btn btn-secondary view-product" data-product-id="${product.id}">${translations[state.lang].viewProduct}</button>
+  const aliases = {
+    men: ["men", "male", "رجالي", "رجال", "للرجال"],
+    women: ["women", "female", "نسائي", "نساء", "للنساء"],
+    unisex: ["unisex", "جنسين", "للجنسين"],
+
+    woody: ["woody", "خشبي"],
+    floral: ["floral", "زهري"],
+    oriental: ["oriental", "شرقي"],
+    fresh: ["fresh", "منعش"],
+    musky: ["musky", "musk", "مسكي"],
+    sweet: ["sweet", "حلو"],
+
+    evening: ["evening", "night", "سهرة"],
+    daily: ["daily", "يومي"],
+    work: ["work", "office", "عمل", "شغل"],
+    special: ["special", "مناسبة خاصة"]
+  };
+
+  const matchesAlias = (value, list) =>
+    list.some(word => value.includes(word));
+
+  const results = productCatalog.filter(product => {
+
+    const searchableText = [
+      product.name,
+      product.tag,
+      product.gender,
+      product.occasion,
+      product.mood,
+      product.strength,
+      product.description,
+      ...(product.notes || [])
+    ]
+      .join(" ")
+      .toLowerCase();
+
+    if (searchableText.includes(q)) return true;
+
+    if (
+      product.gender === "men" &&
+      matchesAlias(q, aliases.men)
+    ) return true;
+
+    if (
+      product.gender === "women" &&
+      matchesAlias(q, aliases.women)
+    ) return true;
+
+    if (
+      product.gender === "unisex" &&
+      matchesAlias(q, aliases.unisex)
+    ) return true;
+
+    if (
+      product.tag === "خشبي" &&
+      matchesAlias(q, aliases.woody)
+    ) return true;
+
+    if (
+      product.tag === "زهري" &&
+      matchesAlias(q, aliases.floral)
+    ) return true;
+
+    if (
+      product.tag === "شرقي" &&
+      matchesAlias(q, aliases.oriental)
+    ) return true;
+
+    if (
+      product.tag === "منعش" &&
+      matchesAlias(q, aliases.fresh)
+    ) return true;
+
+    if (
+      product.tag === "مسكي" &&
+      matchesAlias(q, aliases.musky)
+    ) return true;
+
+    if (
+      product.tag === "حلو" &&
+      matchesAlias(q, aliases.sweet)
+    ) return true;
+
+    if (
+      product.occasion === "سهرة" &&
+      matchesAlias(q, aliases.evening)
+    ) return true;
+
+    if (
+      product.occasion === "يومي" &&
+      matchesAlias(q, aliases.daily)
+    ) return true;
+
+    if (
+      product.occasion === "العمل" &&
+      matchesAlias(q, aliases.work)
+    ) return true;
+
+    if (
+      product.occasion === "مناسبة خاصة" &&
+      matchesAlias(q, aliases.special)
+    ) return true;
+
+    return false;
+  });
+
+  if (!results.length) {
+    container.innerHTML = `
+      <div class="search-empty">
+        <strong>مفيش تطابق مباشر.</strong>
+        <p>جرب اسم العطر، النوع، المناسبة، أو كلمة مثل: خشبي، زهري، شرقي، رجالي، نسائي، سهرة.</p>
       </div>
     `;
-  }).join('');
+    return;
+  }
 
-  document.querySelectorAll('.search-result .view-product').forEach((button) => {
-    button.addEventListener('click', () => openProductModal(Number(button.dataset.productId)));
+  container.innerHTML = results
+    .map(product => `
+      <article class="search-result">
+        <img
+          src="${product.image}"
+          alt="${product.name}"
+          loading="lazy"
+        >
+
+        <div class="search-result-info">
+          <strong>${product.name}</strong>
+
+          <span>
+            ${product.tag} • ${product.occasion}
+          </span>
+
+          <small>
+            ${product.description}
+          </small>
+
+          <b>
+            ${formatPrice(product.price)}
+          </b>
+        </div>
+
+        <button
+          type="button"
+          class="search-view-btn"
+          data-search-view="${product.id}"
+        >
+          عرض
+        </button>
+      </article>
+    `)
+    .join("");
+
+  container.querySelectorAll("[data-search-view]").forEach(button => {
+    button.addEventListener("click", () => {
+      openProductModal(Number(button.dataset.searchView));
+    });
   });
 }
 
@@ -1172,7 +1309,7 @@ function openProductModal(productId) {
   const modalEl = document.getElementById('productModal');
   if (modalEl) {
     const modalWidth = Math.min(900, window.innerWidth - 28);
-    modalEl.style.width = `${modalWidth}px`;
+    
     modalEl.style.maxWidth = 'calc(100vw - 28px)';
     modalEl.style.left = '50%';
     modalEl.style.top = '50%';
@@ -1182,7 +1319,7 @@ function openProductModal(productId) {
     modalEl.style.direction = state.lang === 'ar' ? 'rtl' : 'ltr';
     modalEl.style.setProperty('inset-inline-start', '50%');
     modalEl.style.setProperty('inset-inline-end', 'auto');
-    modalEl.style.transform = 'translate(-50%, -50%)';
+    
   }
 
   openPanel('productModal');
@@ -1395,10 +1532,16 @@ function updateFinderSteps() {
   ui.matchedProducts.innerHTML = '';
 }
 
+function escapeHtml(text) {
+  const div = document.createElement("div");
+  div.textContent = text;
+  return div.innerHTML;
+}
+
 function renderAiMessages() {
   if (!ui.aiMessages) return;
   ui.aiMessages.innerHTML = state.aiMessages.map((message) => `
-    <div class="ai-bubble ${message.role}">${message.text}</div>
+    <div class="ai-bubble ${message.role}">${message.role === "user" ? escapeHtml(message.text) : message.text}</div>
   `).join('');
 
   ui.aiMessages.querySelectorAll('.view-product').forEach((button) => {
@@ -1428,21 +1571,67 @@ function askAiQuestion(step) {
 }
 
 function generateRecommendationHtml(products) {
+  if (!products || !products.length) {
+    return `
+      <div class="ai-no-results">
+        <strong>مش لاقي تطابق مباشر.</strong>
+        <p>
+          جرب توصف لي العطر اللي عاوزه بشكل مختلف،
+          وأنا هحاول أرشح لك أقرب اختيار.
+        </p>
+      </div>
+    `;
+  }
+
   return `
-    <div class="ai-recommend-list">
-      ${products.map((product) => `
-        <div class="ai-recommend-item">
-          <img src="${product.image}" alt="${product.name}" />
-          <div>
+    <div class="ai-recommendations">
+      <p class="ai-recommendations-title">
+        ✨ أرشح لك من المجموعة دي:
+      </p>
+
+      ${products.slice(0, 4).map(product => `
+        <article class="ai-recommendation">
+          <img
+            src="${product.image}"
+            alt="${product.name}"
+            loading="lazy"
+          >
+
+          <div class="ai-recommendation-info">
             <strong>${product.name}</strong>
-            <div class="price">${formatPrice(product.price)}</div>
-            <div>${translations[state.lang].recommendation} ${product.type.toLowerCase()} ${product.mood.toLowerCase()} ${product.occasion.toLowerCase()}.</div>
-            <button class="view-product" data-product-id="${product.id}">${translations[state.lang].viewProduct}</button>
+
+            <span>
+              ${product.tag} • ${product.occasion}
+            </span>
+
+            <small>
+              ${product.mood} • ${product.strength}
+            </small>
+
+            <b>
+              ${formatPrice(product.price)}
+            </b>
+
+            <button
+              type="button"
+              class="ai-product-btn"
+              data-ai-product="${product.id}"
+            >
+              اكتشف العطر
+            </button>
           </div>
-        </div>
-      `).join('')}
+        </article>
+      `).join("")}
     </div>
   `;
+
+container.querySelectorAll("[data-ai-product]").forEach(button => {
+  button.addEventListener("click", () => {
+    const productId = Number(button.dataset.aiProduct);
+    openProductModal(productId);
+  });
+});
+
 }
 
 function collectAiAnswers() {
@@ -1648,117 +1837,280 @@ function getWebsiteKnowledgeAnswer(q) {
 }
 
 function answerCatalogQuestion(value) {
-  const q = String(value || '').trim().toLowerCase();
-  if (!q) return translations[state.lang].noInfo;
+  const q = value.toLowerCase().trim();
 
-  const siteAnswer = getWebsiteKnowledgeAnswer(q);
-  if (siteAnswer) return siteAnswer;
+  // =========================
+  // STORE INFORMATION
+  // =========================
 
-  const typeNames = [...new Set(productCatalog.map((product) => product.type))].join('، ');
-  const lightProducts = productCatalog.filter((product) => getSkinWeightForProduct(product) === 'خفيف');
-  const heavyProducts = productCatalog.filter((product) => getSkinWeightForProduct(product) === 'ثقيل');
-
-  if (q.includes('خفيف') || q.includes('light') || q.includes('خفيفة') || q.includes('على الجلد') || q.includes('light on')) {
-    if (!lightProducts.length) return translations[state.lang].noInfo;
-    return generateRecommendationHtml(lightProducts.slice(0, 3));
+  if (
+    q.includes("اسم المتجر") ||
+    q.includes("اسم الموقع") ||
+    q.includes("اسم البراند") ||
+    q.includes("what is the store") ||
+    q.includes("store name") ||
+    q.includes("brand name")
+  ) {
+    return "اسم المتجر هو YourBrand، وهو متجر عطور فاخر يقدم مجموعة مختارة من العطور الرجالية والنسائية والعطور المناسبة للجنسين.";
   }
 
-  if (q.includes('ثقيل') || q.includes('heavy') || q.includes('heavy on') || q.includes('قوي على الجلد')) {
-    if (!heavyProducts.length) return translations[state.lang].noInfo;
-    return generateRecommendationHtml(heavyProducts.slice(0, 3));
+  if (
+    q.includes("المتجر") ||
+    q.includes("عن الموقع") ||
+    q.includes("فكرة الموقع") ||
+    q.includes("about") ||
+    q.includes("website")
+  ) {
+    return "YourBrand هو متجر عطور فاخر مصمم لتسهيل اكتشاف العطر المناسب لك، مع تصنيفات للرجال والنساء والجنسين، ومجموعة من العطور اليومية وعطور السهرات والعمل والمناسبات الخاصة.";
   }
 
-  if ((q.includes('نوع') || q.includes('أنواع') || q.includes('أصناف') || q.includes('عطر') || q.includes('العطور') || q.includes('perfume')) && (q.includes('خفيف') || q.includes('light') || q.includes('ثقيل') || q.includes('heavy'))) {
-    if (q.includes('خفيف') || q.includes('light')) {
-      if (!lightProducts.length) return translations[state.lang].noInfo;
-      return `العطور الخفيفة على الجلد في المتجر هي: ${lightProducts.map((product) => product.name).join('، ')}.`;
+  if (
+    q.includes("مكان") ||
+    q.includes("عنوان") ||
+    q.includes("فين") ||
+    q.includes("location") ||
+    q.includes("address")
+  ) {
+    return "يمكنك معرفة موقع المتجر من قسم الموقع داخل الصفحة، حيث ستجد الخريطة ومعلومات الوصول.";
+  }
+
+  if (
+    q.includes("حجز") ||
+    q.includes("موعد") ||
+    q.includes("booking") ||
+    q.includes("appointment")
+  ) {
+    return "يمكنك حجز موعد من قسم الحجز داخل الموقع، وإدخال بياناتك واختيار التاريخ والوقت المناسبين.";
+  }
+
+  if (
+    q.includes("تواصل") ||
+    q.includes("واتساب") ||
+    q.includes("contact") ||
+    q.includes("whatsapp")
+  ) {
+    return "يمكنك التواصل مع المتجر من خلال بيانات التواصل الموجودة في قسم المساعدة والتواصل داخل الموقع.";
+  }
+
+  if (
+    q.includes("سعر") ||
+    q.includes("الاسعار") ||
+    q.includes("الأسعار") ||
+    q.includes("price") ||
+    q.includes("prices")
+  ) {
+    return "أسعار العطور تختلف حسب المنتج والمقاس. يمكنك فتح أي عطر لمعرفة السعر والمقاسات المتاحة بالتفصيل.";
+  }
+
+  if (
+    q.includes("مقاس") ||
+    q.includes("حجم") ||
+    q.includes("50ml") ||
+    q.includes("100ml") ||
+    q.includes("size")
+  ) {
+    return "معظم العطور متاحة بمقاسي 50ml و100ml، ويمكنك اختيار المقاس مباشرة من بطاقة المنتج أو من نافذة تفاصيل العطر.";
+  }
+
+  if (
+    q.includes("خصم") ||
+    q.includes("عروض") ||
+    q.includes("offer") ||
+    q.includes("discount")
+  ) {
+    const offers = productCatalog.filter(p => p.discountPercent);
+
+    if (offers.length) {
+      return `لدينا حاليًا ${offers.length} عطور عليها خصومات. يمكنك مشاهدة المنتجات المخفضة من قسم العروض داخل الموقع.`;
     }
-    if (q.includes('ثقيل') || q.includes('heavy')) {
-      if (!heavyProducts.length) return translations[state.lang].noInfo;
-      return `العطور الثقيلة على الجلد في المتجر هي: ${heavyProducts.map((product) => product.name).join('، ')}.`;
-    }
+
+    return "لا توجد عروض مخفضة حاليًا.";
   }
 
-  if (q.includes('خشبي') || q.includes('عود') || q.includes('سدر')) {
-    const matches = productCatalog.filter((product) => product.type === 'خشبي' || product.tag === 'خشبي' || product.notes.some((note) => ['عود', 'خشب', 'سدر', 'أرز'].includes(note))).slice(0, 3);
-    if (!matches.length) return translations[state.lang].noInfo;
-    return generateRecommendationHtml(matches);
+  // =========================
+  // PRODUCT INFORMATION
+  // =========================
+
+  const product = productCatalog.find(p => {
+    const name = p.name.toLowerCase();
+    const tag = p.tag.toLowerCase();
+
+    return (
+      q.includes(name) ||
+      name.includes(q) ||
+      q.includes(tag)
+    );
+  });
+
+  if (product) {
+    return `
+      <strong>${product.name}</strong><br>
+      النوع: ${product.tag}<br>
+      الفئة: ${product.gender === "men" ? "رجالي" : product.gender === "women" ? "نسائي" : "للجنسين"}<br>
+      المناسبة: ${product.occasion}<br>
+      الطابع: ${product.mood}<br>
+      القوة: ${product.strength}<br>
+      النوتات: ${product.notes.join("، ")}<br>
+      السعر يبدأ من: ${formatPrice(product.price)}<br><br>
+      ${product.description}
+    `;
   }
 
-  if (q.includes('مسك') || q.includes('مسكي') || q.includes('مِسْك')) {
-    const matches = productCatalog.filter((product) => product.type === 'مسكي' || product.tag === 'مسكي' || product.notes.some((note) => ['مسك', 'مِسْك', 'مِسك'].includes(note))).slice(0, 3);
-    if (!matches.length) return translations[state.lang].noInfo;
-    return generateRecommendationHtml(matches);
+  // =========================
+  // RECOMMENDATIONS
+  // =========================
+
+  if (
+    q.includes("رجالي") ||
+    q.includes("للرجال") ||
+    q.includes("men") ||
+    q.includes("male")
+  ) {
+    const products = productCatalog.filter(
+      p => p.gender === "men" || p.gender === "unisex"
+    );
+
+    return generateRecommendationHtml(products.slice(0, 4));
   }
 
-  if (q.includes('منعش') || q.includes('ليمون') || q.includes('صنوبر')) {
-    const matches = productCatalog.filter((product) => product.type === 'منعش' || product.tag === 'منعش' || product.notes.some((note) => ['ليمون', 'صنوبر', 'نيم', 'برتقال'].includes(note))).slice(0, 3);
-    if (!matches.length) return translations[state.lang].noInfo;
-    return generateRecommendationHtml(matches);
+  if (
+    q.includes("نسائي") ||
+    q.includes("للنساء") ||
+    q.includes("women") ||
+    q.includes("female")
+  ) {
+    const products = productCatalog.filter(
+      p => p.gender === "women" || p.gender === "unisex"
+    );
+
+    return generateRecommendationHtml(products.slice(0, 4));
   }
 
-  if (q.includes('زهري') || q.includes('ورد') || q.includes('وردة')) {
-    const matches = productCatalog.filter((product) => product.type === 'زهري' || product.tag === 'زهري' || product.notes.some((note) => ['ورد', 'وردة', 'خزامى', 'مِرْجان'].includes(note))).slice(0, 3);
-    if (!matches.length) return translations[state.lang].noInfo;
-    return generateRecommendationHtml(matches);
+  if (
+    q.includes("خشبي") ||
+    q.includes("woody")
+  ) {
+    return generateRecommendationHtml(
+      productCatalog.filter(p => p.tag === "خشبي")
+    );
   }
 
-  if (q.includes('شرقي') || q.includes('عنبر') || q.includes('زعفران')) {
-    const matches = productCatalog.filter((product) => product.type === 'شرقي' || product.tag === 'شرقي' || product.notes.some((note) => ['عود', 'عنبر', 'زعفران', 'بخور'].includes(note))).slice(0, 3);
-    if (!matches.length) return translations[state.lang].noInfo;
-    return generateRecommendationHtml(matches);
+  if (
+    q.includes("زهري") ||
+    q.includes("floral")
+  ) {
+    return generateRecommendationHtml(
+      productCatalog.filter(p => p.tag === "زهري")
+    );
   }
 
-  if (q.includes('حلو') || q.includes('فانيليا') || q.includes('موز')) {
-    const matches = productCatalog.filter((product) => product.type === 'حلو' || product.tag === 'حلو' || product.notes.some((note) => ['فانيليا', 'موز', 'مشمش', 'مِرْجان'].includes(note))).slice(0, 3);
-    if (!matches.length) return translations[state.lang].noInfo;
-    return generateRecommendationHtml(matches);
+  if (
+    q.includes("شرقي") ||
+    q.includes("oriental")
+  ) {
+    return generateRecommendationHtml(
+      productCatalog.filter(p => p.tag === "شرقي")
+    );
   }
 
-  if (q.includes('نوع') || q.includes('أنواع') || q.includes('أصناف') || q.includes('العطور') || q.includes('عطر')) {
-    if (typeNames) {
-      return `الأنواع المتاحة في المتجر هي: ${typeNames}.`;
-    }
-    return translations[state.lang].noInfo;
+  if (
+    q.includes("منعش") ||
+    q.includes("fresh")
+  ) {
+    return generateRecommendationHtml(
+      productCatalog.filter(p => p.tag === "منعش")
+    );
   }
 
-  if (q.includes('رجالي') || q.includes('رجل')) {
-    const matches = productCatalog.filter((product) => product.gender === 'men').slice(0, 3);
-    if (!matches.length) return translations[state.lang].noInfo;
-    return `العطور الرجالية المتاحة في المتجر هي: ${matches.map((product) => product.name).join('، ')}.`;
+  if (
+    q.includes("مسكي") ||
+    q.includes("musk") ||
+    q.includes("musky")
+  ) {
+    return generateRecommendationHtml(
+      productCatalog.filter(p => p.tag === "مسكي")
+    );
   }
 
-  if (q.includes('نسائي') || q.includes('ست')) {
-    const matches = productCatalog.filter((product) => product.gender === 'women').slice(0, 3);
-    if (!matches.length) return translations[state.lang].noInfo;
-    return `العطور النسائية المتاحة في المتجر هي: ${matches.map((product) => product.name).join('، ')}.`;
+  if (
+    q.includes("سهرة") ||
+    q.includes("ليل") ||
+    q.includes("evening") ||
+    q.includes("night")
+  ) {
+    return generateRecommendationHtml(
+      productCatalog.filter(p => p.occasion === "سهرة")
+    );
   }
 
-  if (q.includes('جنسين') || q.includes('للجنسين') || q.includes('unisex')) {
-    const matches = productCatalog.filter((product) => product.gender === 'unisex').slice(0, 3);
-    if (!matches.length) return translations[state.lang].noInfo;
-    return `العطور للجنسين المتاحة في المتجر هي: ${matches.map((product) => product.name).join('، ')}.`;
+  if (
+    q.includes("يومي") ||
+    q.includes("يوم") ||
+    q.includes("daily")
+  ) {
+    return generateRecommendationHtml(
+      productCatalog.filter(p => p.occasion === "يومي")
+    );
   }
 
-  if (q.includes('مساء') || q.includes('سهرة') || q.includes('evening')) {
-    const matches = productCatalog.filter((product) => product.occasion === 'سهرة' || product.occasion === 'مناسبة خاصة').slice(0, 3);
-    if (!matches.length) return translations[state.lang].noInfo;
-    return generateRecommendationHtml(matches);
+  if (
+    q.includes("عمل") ||
+    q.includes("شغل") ||
+    q.includes("office") ||
+    q.includes("work")
+  ) {
+    return generateRecommendationHtml(
+      productCatalog.filter(p => p.occasion === "العمل")
+    );
   }
 
-  if (q.includes('يومي') || q.includes('daily') || q.includes('نهاري')) {
-    const matches = productCatalog.filter((product) => product.occasion === 'يومي').slice(0, 3);
-    if (!matches.length) return translations[state.lang].noInfo;
-    return generateRecommendationHtml(matches);
+  if (
+    q.includes("قوي") ||
+    q.includes("قوية") ||
+    q.includes("ثابت") ||
+    q.includes("strong") ||
+    q.includes("heavy")
+  ) {
+    return generateRecommendationHtml(
+      productCatalog.filter(p => p.strength === "قوي")
+    );
   }
 
-  if (q.includes('العمل') || q.includes('work')) {
-    const matches = productCatalog.filter((product) => product.occasion === 'العمل').slice(0, 3);
-    if (!matches.length) return translations[state.lang].noInfo;
-    return generateRecommendationHtml(matches);
+  if (
+    q.includes("خفيف") ||
+    q.includes("light")
+  ) {
+    return generateRecommendationHtml(
+      productCatalog.filter(p => p.strength === "خفيف")
+    );
   }
 
-  return translations[state.lang].noInfo;
+  if (
+    q.includes("هادئ") ||
+    q.includes("هادئة") ||
+    q.includes("calm")
+  ) {
+    return generateRecommendationHtml(
+      productCatalog.filter(p => p.mood === "هادئة")
+    );
+  }
+
+  if (
+    q.includes("فاخر") ||
+    q.includes("فخامة") ||
+    q.includes("luxury") ||
+    q.includes("luxurious")
+  ) {
+    return generateRecommendationHtml(
+      productCatalog.filter(p => p.mood === "فاخرة")
+    );
+  }
+
+  // =========================
+  // DEFAULT
+  // =========================
+
+  return "أقدر أساعدك في معرفة تفاصيل العطور، الأسعار والمقاسات، العروض، أنواع العطور، المناسبات، النوتات، أو أقدر أرشح لك عطر حسب ذوقك.";
 }
 
 function bindGlobalEvents() {
