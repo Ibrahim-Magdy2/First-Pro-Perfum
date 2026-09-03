@@ -282,6 +282,268 @@ function getDefaultProductSize(product) {
   return sizes[0] || { ml: 100, price: product.price };
 }
 
+const aiKnowledge = {
+  store: {
+    name: "YourBrand",
+    description: "YourBrand متجر عطور فاخر يضم مجموعة مختارة من العطور الرجالية والنسائية والعطور المناسبة للجنسين.",
+    categories: "لدينا عطور رجالية، نسائية، وللجنسين.",
+    occasions: "لدينا عطور للاستخدام اليومي، العمل، السهرات، والمناسبات الخاصة.",
+    sizes: "تتوفر العطور بمقاسات مختلفة مثل 50ml و100ml حسب المنتج.",
+    payment: "يمكنك إضافة المنتجات إلى السلة ثم الانتقال إلى إتمام الطلب.",
+    booking: "يمكنك حجز موعد من قسم الحجز داخل الموقع.",
+    location: "يمكنك معرفة موقع المتجر من قسم الموقع والخريطة.",
+    contact: "يمكنك التواصل مع المتجر من خلال بيانات التواصل الموجودة في الموقع.",
+    ai: "يمكنني مساعدتك في اختيار العطر، معرفة الأسعار والمقاسات، معرفة المكونات والمناسبة المناسبة للعطر، ومقارنة المنتجات."
+  },
+
+  categories: {
+    woody: "العطور الخشبية تتميز بطابع دافئ وأنيق وتناسب الإطلالات الرسمية والسهرات.",
+    floral: "العطور الزهرية تتميز بطابع ناعم وزهري وأنثوي ومنعش.",
+    oriental: "العطور الشرقية تتميز بطابع غني ودافئ وفخم.",
+    musky: "العطور المسكية تتميز بطابع ناعم ونظيف وقريب من البشرة.",
+    fresh: "العطور المنعشة مناسبة للاستخدام اليومي والأجواء الحيوية.",
+    sweet: "العطور الحلوة تتميز بطابع دافئ وجذاب."
+  }
+};
+
+const aiKeywords = {
+  men: [
+    "رجالي",
+    "رجال",
+    "للرجال",
+    "male",
+    "men",
+    "man"
+  ],
+
+  women: [
+    "نسائي",
+    "نسائية",
+    "نساء",
+    "للنساء",
+    "female",
+    "women",
+    "woman"
+  ],
+
+  unisex: [
+    "جنسين",
+    "للجنسين",
+    "unisex"
+  ],
+
+  woody: [
+    "خشبي",
+    "خشبية",
+    "خشب",
+    "woody"
+  ],
+
+  floral: [
+    "زهري",
+    "زهرية",
+    "زهور",
+    "floral"
+  ],
+
+  oriental: [
+    "شرقي",
+    "شرقية",
+    "oriental"
+  ],
+
+  musky: [
+    "مسكي",
+    "مسك",
+    "musk",
+    "musky"
+  ],
+
+  fresh: [
+    "منعش",
+    "منعشة",
+    "انتعاش",
+    "fresh"
+  ],
+
+  sweet: [
+    "حلو",
+    "حلوة",
+    "sweet"
+  ],
+
+  evening: [
+    "سهرة",
+    "سهرات",
+    "ليل",
+    "ليلي",
+    "evening",
+    "night"
+  ],
+
+  daily: [
+    "يومي",
+    "يومية",
+    "كل يوم",
+    "daily"
+  ],
+
+  work: [
+    "عمل",
+    "شغل",
+    "مكتب",
+    "دوام",
+    "work",
+    "office"
+  ],
+
+  special: [
+    "مناسبة خاصة",
+    "مناسبات",
+    "special occasion"
+  ],
+
+  strong: [
+    "قوي",
+    "قوية",
+    "ثبات",
+    "ثابت",
+    "strong",
+    "heavy"
+  ],
+
+  light: [
+    "خفيف",
+    "خفيفة",
+    "light"
+  ],
+
+  luxury: [
+    "فاخر",
+    "فاخرة",
+    "فخامة",
+    "luxury",
+    "luxurious"
+  ],
+
+  cheap: [
+    "رخيص",
+    "رخيصة",
+    "اقتصادي",
+    "أرخص",
+    "cheap",
+    "cheapest"
+  ]
+};
+
+function aiHasKeyword(query, keywords) {
+  return keywords.some(keyword =>
+    query.includes(keyword.toLowerCase())
+  );
+}
+
+function getAiRecommendations(query) {
+  const q = query.toLowerCase().trim();
+
+  if (!q) return [];
+
+  const matches = productCatalog.map((product) => {
+    let score = 0;
+
+    const searchable = [
+      product.name,
+      product.gender,
+      product.type,
+      product.occasion,
+      product.mood,
+      product.strength,
+      product.skinWeight,
+      product.tag,
+      product.collection,
+      product.shortLabel,
+      product.description,
+      ...(product.notes || [])
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase();
+
+    if (searchable.includes(q)) score += 10;
+
+    if (aiHasKeyword(q, aiKeywords.men) && product.gender === 'men') {
+      score += 5;
+    }
+
+    if (aiHasKeyword(q, aiKeywords.women) && product.gender === 'women') {
+      score += 5;
+    }
+
+    if (aiHasKeyword(q, aiKeywords.unisex) && product.gender === 'unisex') {
+      score += 5;
+    }
+
+    if (aiHasKeyword(q, aiKeywords.woody) && product.type === 'خشبي') {
+      score += 4;
+    }
+
+    if (aiHasKeyword(q, aiKeywords.floral) && product.type === 'زهري') {
+      score += 4;
+    }
+
+    if (aiHasKeyword(q, aiKeywords.oriental) && product.type === 'شرقي') {
+      score += 4;
+    }
+
+    if (aiHasKeyword(q, aiKeywords.musky) && product.type === 'مسكي') {
+      score += 4;
+    }
+
+    if (aiHasKeyword(q, aiKeywords.fresh) && product.type === 'منعش') {
+      score += 4;
+    }
+
+    if (aiHasKeyword(q, aiKeywords.sweet) && product.type === 'حلو') {
+      score += 4;
+    }
+
+    if (aiHasKeyword(q, aiKeywords.evening) && product.occasion === 'سهرة') {
+      score += 4;
+    }
+
+    if (aiHasKeyword(q, aiKeywords.daily) && product.occasion === 'يومي') {
+      score += 4;
+    }
+
+    if (aiHasKeyword(q, aiKeywords.work) && product.occasion === 'عمل') {
+      score += 4;
+    }
+
+    if (aiHasKeyword(q, aiKeywords.special) && product.occasion === 'مناسبة خاصة') {
+      score += 4;
+    }
+
+    if (aiHasKeyword(q, aiKeywords.strong) && product.strength === 'قوي') {
+      score += 3;
+    }
+
+    if (aiHasKeyword(q, aiKeywords.light) && product.strength === 'خفيف') {
+      score += 3;
+    }
+
+    if (aiHasKeyword(q, aiKeywords.luxury) && product.mood === 'فاخرة') {
+      score += 3;
+    }
+
+    return { product, score };
+  });
+
+  return matches
+    .filter((item) => item.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 4)
+    .map((item) => item.product);
+}
+
 const state = {
   theme: localStorage.getItem('perfume-theme') || 'dark',
   lang: localStorage.getItem('perfume-lang') || 'ar',
@@ -299,6 +561,94 @@ const state = {
   selectedSizes: {},
   productQuantities: {}
 };
+
+const searchNavigation = [
+  {
+    title: 'الرئيسية',
+    keywords: ['الرئيسية', 'home', 'main'],
+    target: '#home',
+    description: 'الصفحة الرئيسية للموقع.'
+  },
+  {
+    title: 'المجموعة',
+    keywords: ['المجموعة', 'collection', 'perfumes'],
+    target: '#collection',
+    description: 'استكشف مجموعة العطور.'
+  },
+  {
+    title: 'العطور الرجالية',
+    keywords: ['رجالي', 'رجال', 'men', 'male'],
+    target: '#men',
+    description: 'عطور مخصصة للرجال.'
+  },
+  {
+    title: 'العطور النسائية',
+    keywords: ['نسائي', 'نساء', 'women', 'female'],
+    target: '#women',
+    description: 'عطور مخصصة للنساء.'
+  },
+  {
+    title: 'العطور للجنسين',
+    keywords: ['للجنسين', 'جنسين', 'unisex'],
+    target: '#unisex',
+    description: 'عطور مناسبة للرجال والنساء.'
+  },
+  {
+    title: 'اكتشف عطرك',
+    keywords: ['اكتشف عطرك', 'finder', 'discover', 'اكتشاف العطر'],
+    target: '#finder',
+    description: 'ساعد نفسك في اكتشاف العطر المناسب.'
+  },
+  {
+    title: 'العروض',
+    keywords: ['عروض', 'offer', 'offers', 'discount', 'خصم'],
+    target: '#offers',
+    description: 'شاهد العطور والعروض المتاحة.'
+  },
+  {
+    title: 'قصتنا',
+    keywords: ['قصتنا', 'about', 'story'],
+    target: '#story',
+    description: 'تعرف على قصة المتجر.'
+  },
+  {
+    title: 'آراء العملاء',
+    keywords: ['آراء', 'reviews', 'عملاء', 'customer'],
+    target: '#reviews',
+    description: 'شاهد آراء وتجارب العملاء.'
+  },
+  {
+    title: 'الموقع',
+    keywords: ['الموقع', 'location', 'address', 'عنوان'],
+    target: '#location',
+    description: 'تعرف على موقع المتجر.'
+  },
+  {
+    title: 'الحجز',
+    keywords: ['حجز', 'booking', 'appointment', 'موعد'],
+    target: '#booking',
+    description: 'احجز موعدك من الموقع.'
+  },
+  {
+    title: 'المساعدة',
+    keywords: ['مساعدة', 'help', 'support', 'دعم'],
+    target: '#help',
+    description: 'قسم المساعدة والدعم.'
+  }
+];
+
+function searchWebsiteSections(query) {
+  const q = query.toLowerCase().trim();
+
+  if (!q) return [];
+
+  return searchNavigation.filter((item) =>
+    item.keywords.some((keyword) =>
+      q.includes(keyword.toLowerCase()) ||
+      keyword.toLowerCase().includes(q)
+    )
+  );
+}
 
 const siteKnowledge = {
   ar: {
@@ -756,8 +1106,12 @@ function getProductPriceForSize(product, ml) {
 function getSelectedProductSize(product) {
   const sizes = getProductSizes(product);
   const current = Number(state.selectedSizes[product.id]);
-  if (sizes.some((size) => Number(size.ml) === current)) return current;
-  return Number(sizes[0]?.ml || product.price || 100);
+
+  if (sizes.some((size) => Number(size.ml) === current)) {
+    return current;
+  }
+
+  return Number(sizes[0]?.ml || 100);
 }
 
 function renderProductCard(product) {
@@ -772,6 +1126,9 @@ function renderProductCard(product) {
   const selectedSize = sizes.find((size) => Number(size.ml) === Number(selectedSizeMl)) || sizes[0] || { ml: 100, price: product.price };
   const displayedSize = sizes.map((size) => `${size.ml}ml`).join(' • ');
   const displayPrice = selectedSize.price;
+
+  const originalPrice = selectedSize.originalPrice || product.originalPrice;
+const discountPercent = selectedSize.discountPercent || product.discountPercent;
 
   const priceMarkup = product.originalPrice && product.originalPrice > displayPrice
     ? `
@@ -840,10 +1197,44 @@ function attachProductCardActions(root = document) {
         });
         const addButton = card.querySelector('.add-cart');
         if (addButton) addButton.dataset.sizeMl = String(sizeMl);
+        
         const priceText = card.querySelector('.product-price');
-        if (priceText) {
-          priceText.textContent = formatPrice(Number(button.dataset.sizePrice));
-        }
+if (priceText) {
+  priceText.textContent = formatPrice(Number(button.dataset.sizePrice));
+}
+
+const product = productCatalog.find((item) => item.id === productId);
+
+if (product) {
+  const sizes = getProductSizes(product);
+  const selectedSize = sizes.find(
+    (size) => Number(size.ml) === sizeMl
+  );
+
+  const originalPrice = card.querySelector('.original-price');
+  const discountBadge = card.querySelector('.discount-badge');
+
+  if (originalPrice) {
+    if (selectedSize?.originalPrice) {
+      originalPrice.textContent = formatPrice(
+        Number(selectedSize.originalPrice)
+      );
+      originalPrice.style.display = '';
+    } else {
+      originalPrice.style.display = 'none';
+    }
+  }
+
+  if (discountBadge) {
+    if (selectedSize?.discountPercent) {
+      discountBadge.textContent = `-${selectedSize.discountPercent}%`;
+      discountBadge.style.display = '';
+    } else {
+      discountBadge.style.display = 'none';
+    }
+  }
+}
+        
       }
     });
   });
@@ -1027,7 +1418,7 @@ function toggleCompare(productId) {
 
 function renderCompare() {
   if (!state.compare.length) {
-    ui.compareGrid.innerHTML = `<div class="cart-empty">${translations[state.lang].emptyWishlist}</div>`;
+    ui.compareGrid.innerHTML = `<div class="cart-empty">${translations[state.lang].emptyCompare}</div>`;
     return;
   }
 
@@ -1238,7 +1629,11 @@ function openProductModal(productId) {
   if (!product) return;
 
   const sizes = getProductSizes(product);
-  const selectedMl = Number(state.selectedSizes[product.id] || sizes[0]?.ml || product.price || 100);
+  const selectedMl = Number(
+  state.selectedSizes[product.id] ||
+  sizes[0]?.ml ||
+  100
+);
   const selectedSize = sizes.find((size) => Number(size.ml) === selectedMl) || sizes[0] || { ml: 100, price: product.price };
   const quantity = Number(state.productQuantities[product.id] || 1);
   const total = selectedSize.price * quantity;
@@ -1265,7 +1660,16 @@ function openProductModal(productId) {
         </div>
         <div class="product-spec">
           <div><span>${translations[state.lang].productPriceLabel}</span><strong>${formatPrice(selectedSize.price)}</strong></div>
-          <div><span>${translations[state.lang].filterUnisex}</span><strong>${translations[state.lang].filterUnisex}</strong></div>
+         <div>
+  <span>${state.lang === 'ar' ? 'الفئة' : 'Gender'}</span>
+  <strong>${
+    product.gender === 'men'
+      ? (state.lang === 'ar' ? 'رجالي' : 'Men')
+      : product.gender === 'women'
+        ? (state.lang === 'ar' ? 'نسائي' : 'Women')
+        : (state.lang === 'ar' ? 'للجنسين' : 'Unisex')
+  }</strong>
+</div>
           <div><span>${product.tag}</span><strong>${product.occasion}</strong></div>
           <div><span>${translations[state.lang].optionStrong}</span><strong>${product.strength}</strong></div>
         </div>
@@ -1310,14 +1714,6 @@ function openProductModal(productId) {
   if (modalEl) {
     const modalWidth = Math.min(900, window.innerWidth - 28);
     
-    modalEl.style.maxWidth = 'calc(100vw - 28px)';
-    modalEl.style.left = '50%';
-    modalEl.style.top = '50%';
-    modalEl.style.right = 'auto';
-    modalEl.style.bottom = 'auto';
-    modalEl.style.margin = '0';
-    modalEl.style.direction = state.lang === 'ar' ? 'rtl' : 'ltr';
-    modalEl.style.setProperty('inset-inline-start', '50%');
     modalEl.style.setProperty('inset-inline-end', 'auto');
     
   }
@@ -1411,7 +1807,7 @@ function setupHeroSlider() {
     clearInterval(state.heroInterval);
     state.heroInterval = setInterval(() => {
       showSlide(state.currentSlide + 1);
-    }, 4200);
+    }, 5000);
   };
 
   let touchStartX = 0;
@@ -1549,6 +1945,14 @@ function renderAiMessages() {
   });
 
   ui.aiMessages.scrollTop = ui.aiMessages.scrollHeight;
+
+ui.aiMessages.querySelectorAll('[data-ai-product]').forEach((button) => {
+  button.addEventListener('click', () => {
+    const productId = Number(button.dataset.aiProduct);
+    openProductModal(productId);
+  });
+});
+  
 }
 
 function addAiMessage(text, role = 'assistant') {
@@ -1625,13 +2029,6 @@ function generateRecommendationHtml(products) {
     </div>
   `;
 
-container.querySelectorAll("[data-ai-product]").forEach(button => {
-  button.addEventListener("click", () => {
-    const productId = Number(button.dataset.aiProduct);
-    openProductModal(productId);
-  });
-});
-
 }
 
 function collectAiAnswers() {
@@ -1683,7 +2080,14 @@ function findAiMatches() {
     matches = matches.filter((product) => product.strength === String(answers.strength).trim());
   }
 
-  return matches.slice(0, 3);
+  if (!matches.length) {
+  return getAiRecommendations(
+    Object.values(state.aiFormState).join(' ')
+  );
+}
+
+return matches.slice(0, 4);
+
 }
 
 function resetAiFlow() {
@@ -1837,6 +2241,9 @@ function getWebsiteKnowledgeAnswer(q) {
 }
 
 function answerCatalogQuestion(value) {
+
+  const isEnglish = state.lang === 'en';
+
   const q = value.toLowerCase().trim();
 
   // =========================
@@ -1954,6 +2361,110 @@ function answerCatalogQuestion(value) {
       السعر يبدأ من: ${formatPrice(product.price)}<br><br>
       ${product.description}
     `;
+  }
+
+  if (
+    q.includes("شحن") ||
+    q.includes("توصيل") ||
+    q.includes("shipping") ||
+    q.includes("delivery")
+  ) {
+    return "يمكنك إتمام طلبك من خلال سلة المشتريات ثم الانتقال إلى إتمام الطلب.";
+  }
+
+  if (
+    q.includes("دفع") ||
+    q.includes("payment")
+  ) {
+    return aiKnowledge.store.payment;
+  }
+
+  if (
+    q.includes("مقاس") ||
+    q.includes("حجم") ||
+    q.includes("size")
+  ) {
+    return aiKnowledge.store.sizes;
+  }
+
+  if (
+    q.includes("حجز") ||
+    q.includes("موعد") ||
+    q.includes("booking") ||
+    q.includes("appointment")
+  ) {
+    return aiKnowledge.store.booking;
+  }
+
+  if (
+    q.includes("عنوان") ||
+    q.includes("مكان") ||
+    q.includes("فين") ||
+    q.includes("location") ||
+    q.includes("address")
+  ) {
+    return aiKnowledge.store.location;
+  }
+
+  if (
+    q.includes("تواصل") ||
+    q.includes("واتساب") ||
+    q.includes("contact") ||
+    q.includes("whatsapp")
+  ) {
+    return aiKnowledge.store.contact;
+  }
+
+  if (
+    q.includes("فكرة") ||
+    q.includes("عن الموقع") ||
+    q.includes("عن المتجر") ||
+    q.includes("about")
+  ) {
+    return aiKnowledge.store.description;
+  }
+
+  if (
+    q.includes("خشبي") ||
+    q.includes("woody")
+  ) {
+    return aiKnowledge.categories.woody;
+  }
+
+  if (
+    q.includes("زهري") ||
+    q.includes("floral")
+  ) {
+    return aiKnowledge.categories.floral;
+  }
+
+  if (
+    q.includes("شرقي") ||
+    q.includes("oriental")
+  ) {
+    return aiKnowledge.categories.oriental;
+  }
+
+  if (
+    q.includes("مسكي") ||
+    q.includes("musk") ||
+    q.includes("musky")
+  ) {
+    return aiKnowledge.categories.musky;
+  }
+
+  if (
+    q.includes("منعش") ||
+    q.includes("fresh")
+  ) {
+    return aiKnowledge.categories.fresh;
+  }
+
+  if (
+    q.includes("حلو") ||
+    q.includes("sweet")
+  ) {
+    return aiKnowledge.categories.sweet;
   }
 
   // =========================
@@ -2106,6 +2617,18 @@ function answerCatalogQuestion(value) {
     );
   }
 
+  const recommendations = getAiRecommendations(value);
+
+  if (recommendations.length) {
+    return `
+      <p>
+        بناءً على طلبك، دي أقرب ترشيحات لذوقك:
+      </p>
+
+      ${generateRecommendationHtml(recommendations)}
+    `;
+  }
+
   // =========================
   // DEFAULT
   // =========================
@@ -2199,22 +2722,19 @@ function toggleAiAssistant() {
 function initializePage() {
   updateTheme();
   updateLanguage();
-  renderProducts();
-  renderCategorySections();
-  renderCart();
-  renderWishlist();
-  renderCompare();
-  renderSearchResults();
   bindGlobalEvents();
   setupHeroSlider();
   setupFinder();
   initializeAiAssistant();
   askAiQuestion(0);
+
   closeAllPanels();
+
   if (ui.aiPanel) {
     ui.aiPanel.classList.remove('is-open');
     ui.aiPanel.setAttribute('aria-hidden', 'true');
   }
+
   if (ui.backdrop) {
     ui.backdrop.classList.remove('is-visible');
   }
